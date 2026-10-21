@@ -106,3 +106,140 @@ jobs:
           name: YTViewer-Personal-iphonesimulator
           path: ${{ env.APP_PATH }}
           if-no-files-found: error
+
+  device:
+    name: Unsigned iPhone IPA
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build Store (iPhone, unsigned)
+        run: |
+          set -euo pipefail
+          # Automatic signing in the project has an empty team. iphoneos
+          # ignores CODE_SIGNING_ALLOWED=NO unless style is forced to Manual.
+          xcodebuild \
+            -project YTViewer.xcodeproj \
+            -scheme Store \
+            -configuration Store \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/Store-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            build
+
+      - name: Store device binary must not contain the downloader
+        run: |
+          set -euo pipefail
+          APP="$(find build/Store-device/Build/Products -type d -name 'YTViewer.app' | head -n 1)"
+          if [ -z "$APP" ]; then
+            echo "Store YTViewer.app was not produced"
+            find build/Store-device -name '*.app' | head
+            exit 1
+          fi
+          BIN="$APP/YTViewer"
+          echo "Store device binary: $BIN"
+          file "$BIN"
+          nm -a "$BIN" > "$RUNNER_TEMP/store-device-nm.txt"
+          strings -a "$BIN" > "$RUNNER_TEMP/store-device-strings.txt"
+          leak=0
+          if grep -F 'DownloaderClient' "$RUNNER_TEMP/store-device-nm.txt"; then
+            echo "nm found DownloaderClient in the Store device binary"
+            leak=1
+          fi
+          if grep -F 'DownloaderClient' "$RUNNER_TEMP/store-device-strings.txt"; then
+            echo "strings found DownloaderClient in the Store device binary"
+            leak=1
+          fi
+          if grep -F '/api/download' "$RUNNER_TEMP/store-device-strings.txt"; then
+            echo "strings found /api/download in the Store device binary"
+            leak=1
+          fi
+          if [ "$leak" -ne 0 ]; then
+            exit 1
+          fi
+          echo "STORE_APP=$APP" >> "$GITHUB_ENV"
+          echo "Store device binary has no DownloaderClient symbol and no /api/download string"
+
+      - name: Package Store unsigned IPA
+        run: |
+          set -euo pipefail
+          STAGE="$(mktemp -d)"
+          mkdir -p "$STAGE/Payload"
+          cp -a "$STORE_APP" "$STAGE/Payload/YTViewer.app"
+          OUT="$GITHUB_WORKSPACE/YTViewer-Store-unsigned.ipa"
+          rm -f "$OUT"
+          (cd "$STAGE" && zip -qry -y "$OUT" Payload)
+          unzip -Z1 "$OUT" | grep -q '^Payload/YTViewer.app/'
+          echo "Wrote $OUT"
+
+      - name: Build Personal (iPhone, unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project YTViewer.xcodeproj \
+            -scheme Personal \
+            -configuration Personal \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/Personal-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            build
+
+      - name: Personal device binary must contain the downloader
+        run: |
+          set -euo pipefail
+          APP="$(find build/Personal-device/Build/Products -type d -name 'YTViewer.app' | head -n 1)"
+          if [ -z "$APP" ]; then
+            echo "Personal YTViewer.app was not produced"
+            exit 1
+          fi
+          BIN="$APP/YTViewer"
+          echo "Personal device binary: $BIN"
+          file "$BIN"
+          nm -a "$BIN" > "$RUNNER_TEMP/personal-device-nm.txt"
+          if ! grep -F 'DownloaderClient' "$RUNNER_TEMP/personal-device-nm.txt"; then
+            echo "Personal device binary is missing the DownloaderClient symbol"
+            exit 1
+          fi
+          echo "PERSONAL_APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Package Personal unsigned IPA
+        run: |
+          set -euo pipefail
+          STAGE="$(mktemp -d)"
+          mkdir -p "$STAGE/Payload"
+          cp -a "$PERSONAL_APP" "$STAGE/Payload/YTViewer.app"
+          OUT="$GITHUB_WORKSPACE/YTViewer-Personal-unsigned.ipa"
+          rm -f "$OUT"
+          (cd "$STAGE" && zip -qry -y "$OUT" Payload)
+          unzip -Z1 "$OUT" | grep -q '^Payload/YTViewer.app/'
+          echo "Wrote $OUT"
+
+      - name: Upload unsigned Store IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: YTViewer-Store-unsigned.ipa
+          path: YTViewer-Store-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload unsigned Personal IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: YTViewer-Personal-unsigned.ipa
+          path: YTViewer-Personal-unsigned.ipa
+          if-no-files-found: error

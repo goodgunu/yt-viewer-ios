@@ -73,18 +73,30 @@ App Store へ出すアーカイブは、必ず **Store** スキームです。�
 
 ## Mac がなくても確認する
 
-自分の Mac が無くても、GitHub に上げたあとで両方のビルドが通ったかを見られます。
+自分の Mac が無くても、GitHub に上げたあとでビルドが通ったかを見られます。Windows からは、Actions の未署名 IPA を Sideloadly で iPhone に入れられます。
 
 1. このリポジトリを GitHub へ push する
 2. GitHub でそのリポジトリを開く
 3. 上のタブから **Actions** を開く
 4. 一覧のいちばん上の「iOS build」を開く
-5. 緑のチェックなら、Store と Personal がシミュレータ向けにコンパイルでき、Store の成果物にダウンロード機能の記号が残っていない
+5. 緑のチェックなら、Store と Personal がシミュレータ向けにコンパイルでき、Store の成果物にダウンロード機能の記号が残っていない。同じ実行の実機ジョブは、署名なしの IPA を作れている
 6. 赤のバツなら失敗。その行を開くと、どの段で止まったかのログが出る。ログをそのまま開発者に渡す
 
 ワークフローは `.github/workflows/ios-build.yml` です。push と pull request のたびに動きます。
 
-実行結果には、Personal の未署名 `.app` が成果物として付くことがあります。これはシミュレータで作った確認用で、iPhone には入りません。実機へ入れるには、下のサイドロード手順が必要です。
+### Windows から iPhone に入れる
+
+Actions が上げる IPA は未署名です。そのままでは iPhone に入りません。Sideloadly が Apple ID で署名し直してから入れます。
+
+1. 緑になった実行を開く
+2. ページ下の Artifacts から `YTViewer-Personal-unsigned.ipa` をダウンロードする。広告ブロックだけ試すなら `YTViewer-Store-unsigned.ipa`（ダウンロード機能は入っていない）
+3. Windows に [Sideloadly](https://sideloadly.io/) を入れ、iPhone を USB でつなぐ
+4. ダウンロードした IPA を Sideloadly にドラッグする
+5. Apple ID を入力してインストールする。署名するのは Sideloadly で、GitHub 上の IPA は未署名のまま
+6. 入れた直後に起動できないときは、iPhone の「設定 → 一般 → VPN とデバイス管理」で自分の開発者を信頼する
+7. 無料の Apple ID では、おおよそ 7 日で起動できなくなる。期限の前に、同じ IPA を Sideloadly でもう一度署名して入れ直す
+
+シミュレータ用の Personal `.app`（`YTViewer-Personal-iphonesimulator`）も成果物に付くことがあります。あれは iPhone には入りません。
 
 ## サイドロード
 
@@ -108,10 +120,12 @@ App Store へ出すアーカイブは、必ず **Store** スキームです。�
 
 ### Sideloadly
 
+Mac が無いときは、上の「Mac がなくても確認する」で Actions から落とした未署名 IPA を使います。Mac があるときは、Xcode で書き出した IPA でも同じです。Sideloadly が Apple ID で署名し直します。
+
 1. Mac または Windows に Sideloadly を入れる
-2. 上と同じ手順で書き出した IPA をドラッグする
+2. IPA をドラッグする
 3. Apple ID を入力してインストールする
-4. 無料 Apple ID では、起動できなくなったら Sideloadly で同じ IPA を署名し直して入れ直す
+4. 無料 Apple ID では、起動できなくなったら Sideloadly で同じ IPA を署名し直して入れ直す。期限はおおよそ 7 日
 
 ## ブロックリストを更新する
 

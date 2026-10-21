@@ -79,7 +79,12 @@ Personal ビルドだけ、まだ無い外部ダウンロードサーバーへ�
 - `tools/convert_easylist.py --self-test` と、同梱 `blocklist.json` の `--check`
 - `youtube_adblock.js` が JavaScript として構文エラーでない
 
-最初の実コンパイルは GitHub Actions（`.github/workflows/ios-build.yml`）に任せてある。macOS 上で Store と Personal をシミュレータ向けに署名なしでビルドし、Store の実行ファイルに `DownloaderClient` と `/api/download` が無いこと、Personal には `DownloaderClient` があることを見る。緑になるまでは「コンパイルできる」と書かない。
+最初の実コンパイルは GitHub Actions（`.github/workflows/ios-build.yml`）に任せてある。ジョブは二つ。
+
+- `build` は macOS 上で Store と Personal をシミュレータ向けに署名なしでビルドし、Store の実行ファイルに `DownloaderClient` と `/api/download` が無いこと、Personal には `DownloaderClient` があることを見る。成果物はシミュレータ用の Personal `.app`。iPhone には入らない。
+- `device` は同じ二つの構成を `generic/platform=iOS`（iphoneos）で署名なしにビルドする。プロジェクトは Automatic 署名でチームが空なので、`CODE_SIGNING_ALLOWED=NO` に加え `CODE_SIGN_STYLE=Manual` と空のチームを渡している。できた `.app` を `Payload/` に入れて `YTViewer-Store-unsigned.ipa` と `YTViewer-Personal-unsigned.ipa` として上げる。未署名のままでは実機に入らない。Windows では Sideloadly が Apple ID で署名し直す。無料 Apple ID はおおよそ 7 日で署名が切れる。Store の IPA にもダウンローダ記号が無いことを見ている。
+
+緑になるまでは「コンパイルできる」と書かない。この IPA は App Store 用の Archive ではない。配信は Store スキームの正式な Archive だけ。
 
 ## ファイルごとの役割
 
@@ -103,7 +108,7 @@ Personal ビルドだけ、まだ無い外部ダウンロードサーバーへ�
 | `YTViewer/Assets.xcassets` | アプリアイコン、アクセント、起動背景 |
 | `tools/convert_easylist.py` | EasyList テキスト → Content Blocker JSON。未対応規則は捨てる。`--self-test` と `--check` |
 | `docs/AppStore.md` | ストア用の文面と撮影メモ。Store スキームで撮る |
-| `.github/workflows/ios-build.yml` | macos-latest で両方を署名なしビルドし、Store にダウンローダが混ざっていないか見る |
+| `.github/workflows/ios-build.yml` | macos-latest。シミュレータの署名なしビルドと、iphoneos の未署名 IPA（`Payload/` に `.app` を入れて zip）。Store にダウンローダが混ざっていないか見る |
 | `README.md` | 利用者向けの日本語説明 |
 
 バンドル ID は Store が `app.ytviewer.ios`、Personal が `app.ytviewer.ios.personal`。並べてインストールできる。
@@ -119,15 +124,15 @@ Personal ビルドだけ、まだ無い外部ダウンロードサーバーへ�
 - **Swift 側の自動テストは無い。** クライアントの JSON と、届かないときのトーストは、シミュレータでサーバーを止めた状態で見る。
 - **プライバシーマニフェストの UserDefaults は両ビルド共通。** 実際に読むのは Personal のサーバー URL だけ。Store に不要なら、審査で指摘されたときだけ分ける。
 - **`LastUpgradeCheck` は 1500。** 新しい Xcode がプロジェクトの更新を勧める。objectVersion を上げるときは、構成名 Store / Personal が Debug / Release に潰れないことを確認する。
-- **実機の署名チームは空。** シミュレータは `CODE_SIGNING_ALLOWED=NO` で足りる。実機と Archive には Team が要る。
-- **CI の成果物は未署名のシミュレータ用 .app。** iPhone には入らない。
+- **実機の署名チームは空。** シミュレータは `CODE_SIGNING_ALLOWED=NO` で足りる。iphoneos の CI はそれに加え Manual と空チームを渡して未署名 IPA を作る。Xcode から実機へ Run するときと Archive には、開発者の Team が要る。
+- **CI の IPA は未署名。** `Payload/YTViewer.app` を zip しただけなので、そのままでは iPhone に入らない。Sideloadly が Apple ID で署名し直す。無料 Apple ID は約 7 日。シミュレータ用 `.app` は iPhone に入らない。Store の IPA にダウンロード機能は無い。
 
 ## 次にやること
 
 1. GitHub に push し、Actions の「iOS build」を緑にする。赤ならログの Swift エラーだけ直す。仕様は変えない。
 2. 緑のあと、Mac のシミュレータで Store を起動する。URL を開いてインラインで再生できること、歯車の設定にサーバー URL が無いこと。
 3. Personal を起動し、サーバーを止めたままダウンロードを押す。トーストが「ダウンロードサーバー未接続（準備中）」になり、アプリが落ちないこと。
-4. 実機へ入れるときは README のサイドロード手順。無料 Apple ID は約 7 日で署名が切れる。
+4. Mac が無い Windows からは、Actions の `YTViewer-Personal-unsigned.ipa`（広告ブロックだけなら Store の IPA）を Sideloadly で入れる。Sideloadly が署名し直す。無料 Apple ID は約 7 日で署名が切れる。Mac から直接入れる手順も README にある。
 5. ダウンロードサーバーは **別リポジトリ** で、上の API 契約どおりに作る。このリポジトリには足さない。
 6. ブロックリストを EasyList 全文に差し替えるなら、README の変換手順と `--limit` を使う。差し替え前にスターターをコピーする。
 7. App Store に出すのは Store の Archive だけ。文面は `docs/AppStore.md`。
