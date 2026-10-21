@@ -30,7 +30,7 @@ final class ContentRuleManager {
 
         WKContentRuleListStore.default().compileContentRuleList(
             forIdentifier: identifier,
-            encodedContent: source
+            encodedContentRuleList: source
         ) { [weak webView] list, error in
             if let error {
                 self.log.error("WKContentRuleList failed: \(error.localizedDescription, privacy: .public)")

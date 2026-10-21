@@ -123,7 +123,7 @@ struct MainView: View {
                 TextField(
                     "",
                     text: $urlText,
-                    prompt: Text("https://").foregroundStyle(ViewerColor.muted)
+                    prompt: Text("https://").foregroundColor(ViewerColor.muted)
                 )
                 .textFieldStyle(.plain)
                 .font(.system(size: 15))
