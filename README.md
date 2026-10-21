@@ -6,6 +6,8 @@ iPhone 向けのアプリ内ブラウザです。動画サイトを WKWebView �
 
 ダウンロードの本体（抽出や結合）はこのリポジトリにありません。Personal ビルドが持つのは HTTP クライアントと画面の配線だけで、サーバーは別リポジトリで後から実装します。
 
+実装を続ける人は [HANDOFF.md](HANDOFF.md) を先に読んでください。目的、変えてはいけない契約、ファイルの役割、まだ Mac でビルドしていないこと、次の手順がまとまっています。
+
 ## 必要環境
 
 - Xcode 15 以降
@@ -68,6 +70,21 @@ xcodebuild -project YTViewer.xcodeproj -scheme Personal -configuration Personal 
 ```
 
 App Store へ出すアーカイブは、必ず **Store** スキームです。説明文とスクリーンショットの案は [docs/AppStore.md](docs/AppStore.md) にあります。
+
+## Mac がなくても確認する
+
+自分の Mac が無くても、GitHub に上げたあとで両方のビルドが通ったかを見られます。
+
+1. このリポジトリを GitHub へ push する
+2. GitHub でそのリポジトリを開く
+3. 上のタブから **Actions** を開く
+4. 一覧のいちばん上の「iOS build」を開く
+5. 緑のチェックなら、Store と Personal がシミュレータ向けにコンパイルでき、Store の成果物にダウンロード機能の記号が残っていない
+6. 赤のバツなら失敗。その行を開くと、どの段で止まったかのログが出る。ログをそのまま開発者に渡す
+
+ワークフローは `.github/workflows/ios-build.yml` です。push と pull request のたびに動きます。
+
+実行結果には、Personal の未署名 `.app` が成果物として付くことがあります。これはシミュレータで作った確認用で、iPhone には入りません。実機へ入れるには、下のサイドロード手順が必要です。
 
 ## サイドロード
 
@@ -169,6 +186,8 @@ YTViewer/PrivacyInfo.xcprivacy
 YTViewer/Assets.xcassets
 tools/convert_easylist.py
 docs/AppStore.md
+.github/workflows/ios-build.yml
+HANDOFF.md
 README.md
 ```
 
