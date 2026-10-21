@@ -229,7 +229,7 @@ struct DownloaderClient {
             }
             var token = value.trimmingCharacters(in: .whitespaces)
             if let mark = token.range(of: "''") {
-                token = token[mark.upperBound...]
+                token = String(token[mark.upperBound...])
             }
             let decoded = token.removingPercentEncoding ?? String(token)
             let trimmed = decoded.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
