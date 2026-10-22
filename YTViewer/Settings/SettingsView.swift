@@ -12,7 +12,7 @@ struct SettingsView: View {
             Form {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Viewer")
+                        Text("ちゅぶ")
                             .font(.headline)
                             .foregroundStyle(ViewerColor.ink)
                         Text("動画サイトをアプリ内ブラウザで開いて再生します。コンテンツフィルタで広告枠の読み込みを抑えます。")

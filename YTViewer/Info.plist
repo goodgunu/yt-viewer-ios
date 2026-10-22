@@ -6,9 +6,9 @@
 	<string>ja</string>
 	<key>CFBundleDisplayName</key>
 #if PERSONAL_BUILD
-	<string>Viewer P</string>
+	<string>ちゅぶ P</string>
 #else
-	<string>Viewer</string>
+	<string>ちゅぶ</string>
 #endif
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
